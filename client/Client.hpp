@@ -6,16 +6,18 @@
 
 class Client {
 public:
-    Client(const std::string _serverIp, int _port);
+    Client(const std::string& serverIp, const std::string& clientIP, int port);
     void start();
 
 private:
     int sockfd;
     struct sockaddr_in servaddr;
     std::string serverIp;
+    std::string clientIP;
     int port;
 
     void setupSocket();
+    void sendGreeting();
     void communicateWithServer();
 };
 

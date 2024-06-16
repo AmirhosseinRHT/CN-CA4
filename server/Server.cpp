@@ -2,6 +2,8 @@
 #include <iostream>
 #include <cstring>
 #include <unistd.h>
+#include <sstream>
+
 using namespace std;
 
 #define BUFFER_SIZE 1024
@@ -22,7 +24,6 @@ void Server::setupSocket() {
     }
     
     memset(&servaddr, 0, sizeof(servaddr));
-    memset(&cliaddr, 0, sizeof(cliaddr));
     
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = INADDR_ANY;
@@ -38,6 +39,7 @@ void Server::bindSocket() {
 
 void Server::receiveAndRespond() {
     char buffer[BUFFER_SIZE];
+    struct sockaddr_in cliaddr;
     socklen_t len = sizeof(cliaddr);
     int n;
     
@@ -45,8 +47,40 @@ void Server::receiveAndRespond() {
         n = recvfrom(sockfd, (char *)buffer, BUFFER_SIZE, MSG_WAITALL, 
                      (struct sockaddr *)&cliaddr, &len);
         buffer[n] = '\0';
-        cout << "Client : " << buffer << endl;
-        sendto(sockfd, (const char *)"Message received", strlen("Message received"), 
-               MSG_CONFIRM, (const struct sockaddr *)&cliaddr, len);
+        
+        string message(buffer);
+        istringstream iss(message);
+        string messageType, clientIP;
+        
+        iss >> messageType >> clientIP;
+        
+        if (messageType == "GREETING") {
+            handleGreeting(clientIP, cliaddr);
+        } else if (messageType == "MESSAGE") {
+            string destIP, content;
+            iss >> destIP;
+            getline(iss, content);
+            handleMessage(clientIP, destIP, content.substr(1)); // remove leading space
+        }
+    }
+}
+
+void Server::handleGreeting(const string& clientIP, const struct sockaddr_in& clientAddr) {
+    clients[clientIP] = clientAddr;
+    cout << "New client connected: " << clientIP << endl;
+    string response = "GREETING_ACK";
+    sendto(sockfd, response.c_str(), response.length(), MSG_CONFIRM, 
+           (const struct sockaddr *)&clientAddr, sizeof(clientAddr));
+}
+
+void Server::handleMessage(const string& sourceIP, const string& destIP, const string& message) {
+    cout << "Message from " << sourceIP << " to " << destIP << ": " << message << endl;
+    
+    if (clients.find(destIP) != clients.end()) {
+        string fullMessage = "MESSAGE " + sourceIP + " " + message;
+        sendto(sockfd, fullMessage.c_str(), fullMessage.length(), MSG_CONFIRM, 
+               (const struct sockaddr *)&clients[destIP], sizeof(clients[destIP]));
+    } else {
+        cout << "Destination client not found: " << destIP << endl;
     }
 }

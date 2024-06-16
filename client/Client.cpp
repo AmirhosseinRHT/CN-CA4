@@ -2,19 +2,18 @@
 #include <iostream>
 #include <cstring>
 #include <unistd.h>
+#include <sstream>
 
 using namespace std;
 
 #define BUFFER_SIZE 1024
 
-Client::Client(const string _serverIp, int _port)
-{
-    serverIp = _serverIp;
-    port = _port;
-}
+Client::Client(const string& _serverIp, const string& _clientIP, int _port)
+    : serverIp(_serverIp), clientIP(_clientIP), port(_port) {}
 
 void Client::start() {
     setupSocket();
+    sendGreeting();
     communicateWithServer();
 }
 
@@ -31,22 +30,43 @@ void Client::setupSocket() {
     servaddr.sin_addr.s_addr = inet_addr(serverIp.c_str());
 }
 
+void Client::sendGreeting() {
+    string greeting = "GREETING " + clientIP;
+    sendto(sockfd, greeting.c_str(), greeting.length(), MSG_CONFIRM, 
+           (const struct sockaddr *)&servaddr, sizeof(servaddr));
+    
+    char buffer[BUFFER_SIZE];
+    socklen_t len;
+    int n = recvfrom(sockfd, (char *)buffer, BUFFER_SIZE, MSG_WAITALL, 
+                     (struct sockaddr *)&servaddr, &len);
+    buffer[n] = '\0';
+    cout << "Server response: " << buffer << endl;
+}
+
 void Client::communicateWithServer() {
     char buffer[BUFFER_SIZE];
     int n;
     socklen_t len;
     
     while (true) {
-        string message;
-        cout << "Enter message: ";
-        getline(cin, message);
+        string input;
+        cout << "Enter message (FORMAT: DEST_IP MESSAGE) : ";
+        getline(cin, input);
         
-        sendto(sockfd, message.c_str(), message.length(), MSG_CONFIRM, 
+        if (input == "quit") break;
+        
+        istringstream iss(input);
+        string destIP, message;
+        iss >> destIP;
+        getline(iss, message);
+        
+        string fullMessage = "MESSAGE " + clientIP + " " + destIP + message;
+        sendto(sockfd, fullMessage.c_str(), fullMessage.length(), MSG_CONFIRM, 
                (const struct sockaddr *)&servaddr, sizeof(servaddr));
         
         n = recvfrom(sockfd, (char *)buffer, BUFFER_SIZE, MSG_WAITALL, 
                      (struct sockaddr *)&servaddr, &len);
         buffer[n] = '\0';
-        cout << "Server : " << buffer << endl;
+        cout << "Received: " << buffer << endl;
     }
 }
