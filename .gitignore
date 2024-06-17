@@ -9,3 +9,4 @@
 # MinGW generated files
 *.Debug
 *.Release
+*.vscode

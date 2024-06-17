@@ -3,6 +3,7 @@
 #include <cstring>
 #include <unistd.h>
 #include <sstream>
+#include "../defs.hpp"
 
 using namespace std;
 
@@ -37,50 +38,55 @@ void Server::bindSocket() {
     }
 }
 
-void Server::receiveAndRespond() {
+
+string Server::recieveMessage(struct sockaddr_in * clientAddr)
+{
+    char buffer[BUFFER_SIZE];
+    socklen_t len;
+    int n = recvfrom(sockfd, (char *)buffer, BUFFER_SIZE, MSG_WAITALL, (struct sockaddr *)&clientAddr, &len);
+    buffer[n] = '\0';
+    return string(buffer);
+}
+
+void Server::receiveAndRespond() 
+{
     char buffer[BUFFER_SIZE];
     struct sockaddr_in cliaddr;
     socklen_t len = sizeof(cliaddr);
-    int n;
     
-    while (true) {
-        n = recvfrom(sockfd, (char *)buffer, BUFFER_SIZE, MSG_WAITALL, 
-                     (struct sockaddr *)&cliaddr, &len);
+    while (true) 
+    {
+        int n = recvfrom(sockfd, (char *)buffer, BUFFER_SIZE, MSG_WAITALL, (struct sockaddr *)&cliaddr, &len);
         buffer[n] = '\0';
-        
         string message(buffer);
-        istringstream iss(message);
-        string messageType, clientIP;
-        
-        iss >> messageType >> clientIP;
-        
-        if (messageType == "GREETING") {
-            handleGreeting(clientIP, cliaddr);
-        } else if (messageType == "MESSAGE") {
-            string destIP, content;
-            iss >> destIP;
-            getline(iss, content);
-            handleMessage(clientIP, destIP, content.substr(1)); // remove leading space
-        }
+        vector<string >splitted = splitString(message , ' ');
+        if (splitted[0] == "GREETING") 
+            handleGreeting(splitted[1], cliaddr);
+        else if (splitted[0] == "MESSAGE") 
+            handleMessage(splitted[1], splitted[2], splitted[3]);
     }
 }
 
-void Server::handleGreeting(const string& clientIP, const struct sockaddr_in& clientAddr) {
+void Server::handleGreeting(const string& clientIP, const struct sockaddr_in& clientAddr) 
+{
     clients[clientIP] = clientAddr;
     cout << "New client connected: " << clientIP << endl;
-    string response = "GREETING_ACK";
-    sendto(sockfd, response.c_str(), response.length(), MSG_CONFIRM, 
-           (const struct sockaddr *)&clientAddr, sizeof(clientAddr));
+    sendMessageTo(clientIP , "GREETING_ACK");
 }
 
-void Server::handleMessage(const string& sourceIP, const string& destIP, const string& message) {
+void Server::sendMessageTo(std::string destination , std::string msg)
+{
+    sendto(sockfd, msg.c_str(), msg.length(), MSG_CONFIRM, 
+        (const struct sockaddr *)&clients[destination], sizeof(clients[destination]));
+}
+
+void Server::handleMessage(const string& sourceIP, const string& destIP, const string& message) 
+{
     cout << "Message from " << sourceIP << " to " << destIP << ": " << message << endl;
-    
-    if (clients.find(destIP) != clients.end()) {
-        string fullMessage = "MESSAGE " + sourceIP + " " + message;
-        sendto(sockfd, fullMessage.c_str(), fullMessage.length(), MSG_CONFIRM, 
-               (const struct sockaddr *)&clients[destIP], sizeof(clients[destIP]));
-    } else {
+
+    if (clients.find(destIP) != clients.end())
+        sendMessageTo(destIP , "MESSAGE " + sourceIP + " " + message);
+    else 
         cout << "Destination client not found: " << destIP << endl;
-    }
+    
 }
