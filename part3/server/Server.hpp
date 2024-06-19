@@ -23,7 +23,7 @@ private:
     void handleGreeting(const std::string& clientIP, const struct sockaddr_in& clientAddr);
     void handleMessage(const std::string& sourceIP, const std::string& destIP, const std::string& message);
     void sendMessageTo(std::string destination , std::string msg);
-    std::string recieveMessage(struct sockaddr_in * clientAddr);
+    struct sockaddr_in recieveMessage(std::string &msg);
 };
 
 #endif // SERVER_HPP

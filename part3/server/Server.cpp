@@ -39,26 +39,24 @@ void Server::bindSocket() {
 }
 
 
-string Server::recieveMessage(struct sockaddr_in * clientAddr)
-{
-    char buffer[BUFFER_SIZE];
-    socklen_t len;
-    int n = recvfrom(sockfd, (char *)buffer, BUFFER_SIZE, MSG_WAITALL, (struct sockaddr *)&clientAddr, &len);
-    buffer[n] = '\0';
-    return string(buffer);
-}
-
-void Server::receiveAndRespond() 
+struct sockaddr_in Server::recieveMessage(string &msg)
 {
     char buffer[BUFFER_SIZE];
     struct sockaddr_in cliaddr;
     socklen_t len = sizeof(cliaddr);
-    
+    int n = recvfrom(sockfd, (char *)buffer, BUFFER_SIZE, MSG_WAITALL, (struct sockaddr *)&cliaddr, &len);
+    buffer[n] = '\0';
+    msg = string(buffer);
+    return cliaddr;
+}
+
+void Server::receiveAndRespond() 
+{
+    string message;
+    struct sockaddr_in cliaddr;
     while (true) 
     {
-        int n = recvfrom(sockfd, (char *)buffer, BUFFER_SIZE, MSG_WAITALL, (struct sockaddr *)&cliaddr, &len);
-        buffer[n] = '\0';
-        string message(buffer);
+        cliaddr = recieveMessage(message);
         vector<string >splitted = splitString(message , ' ');
         if (splitted[0] == "GREETING") 
             handleGreeting(splitted[1], cliaddr);
