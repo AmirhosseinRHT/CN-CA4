@@ -1,27 +1,22 @@
-#include "Client.hpp"
+#include "Reciever.hpp"
 #include <iostream>
 #include <cstring>
 #include <unistd.h>
 #include <sstream>
-#include "../defs.hpp"
+#include "../defines/defs.hpp"
+#include "Client.hpp"
 
 using namespace std;
 
 #define BUFFER_SIZE 1024
 
-Client::Client(const string& _serverIp, const string& _clientIP, int _port , int type)
-    : serverIp(_serverIp), clientIP(_clientIP), port(_port) ,clientType(type) {}
+Client::Client(const string& _serverIp, const string& _clientIP, int _port)
+    : serverIp(_serverIp), clientIP(_clientIP), port(_port) {}
 
-void Client::start() {
-    setupSocket();
-    sendGreeting();
-    communicateWithServer();
-}
 
 void Client::sendMessage(string msg)
 {
-    sendto(sockfd, msg.c_str(), msg.length(), MSG_CONFIRM, 
-           (const struct sockaddr *)&servaddr, sizeof(servaddr));
+    sendto(sockfd, msg.c_str(), msg.length(), MSG_CONFIRM, (const struct sockaddr *)&servaddr, sizeof(servaddr));
 }
 
 string Client::recieveMessage()
@@ -51,32 +46,4 @@ void Client::sendGreeting() {
     sendMessage(greeting);
     string answer = recieveMessage();
     cout << "Server response: " << answer << endl;
-}
-
-void Client::communicateWithServer() {
-    while (true) 
-    {
-        if(clientType == SENDER)
-            for(int i = 0 ; i < 100 ; i++)
-            {
-                sendMessage("MESSAGE " + clientIP + " " + "192.168.1.3 " + to_string(i));
-                sleep(1);
-            }
-        else
-        {
-            string recievedMessage = recieveMessage();
-            cout << "Received: " << recievedMessage << endl;
-        }
-        // string input;
-        // cout << "Enter message (FORMAT: DEST_IP MESSAGE) : ";
-        // getline(cin, input);
-        // vector<string> splitted = splitString(input , ' ');
-        // if(splitted.size() == 2)
-        // {
-        //     string fullMessage = "MESSAGE " + clientIP + " " + splitted[0] + splitted[1];
-        //     sendMessage(fullMessage);
-        //     string recievedMessage = recieveMessage();
-        //     cout << "Received: " << recievedMessage << endl;
-        // }
-    }
 }

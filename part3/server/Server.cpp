@@ -3,7 +3,7 @@
 #include <cstring>
 #include <unistd.h>
 #include <sstream>
-#include "../defs.hpp"
+#include "../defines/defs.hpp"
 
 using namespace std;
 
