@@ -10,7 +10,7 @@ public:
     void setupSocket();
     void sendGreeting();
     void sendMessage(std::string msg);
-    std::string recieveMessage();
+    std::string recieveMessage(int timeoutSeconds);
 
 protected:
     int sockfd;

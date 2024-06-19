@@ -19,13 +19,33 @@ void Client::sendMessage(string msg)
     sendto(sockfd, msg.c_str(), msg.length(), MSG_CONFIRM, (const struct sockaddr *)&servaddr, sizeof(servaddr));
 }
 
-string Client::recieveMessage()
+#include <sys/time.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+string Client::recieveMessage(int timeoutSeconds)
 {
     char buffer[BUFFER_SIZE];
     socklen_t len;
-    int n = recvfrom(sockfd, (char *)buffer, BUFFER_SIZE, MSG_WAITALL, (struct sockaddr *)&servaddr, &len);
-    buffer[n] = '\0';
-    return string(buffer);
+    fd_set readfds;
+    struct timeval timeout;
+    FD_ZERO(&readfds);
+    FD_SET(sockfd, &readfds);
+    timeout.tv_sec = timeoutSeconds;
+    timeout.tv_usec = 0;
+    int retval = select(sockfd + 1, &readfds, NULL, NULL, &timeout);
+    if (retval == -1)
+    {
+        // Handle error
+    } 
+    else if (retval) 
+    {
+        int n = recvfrom(sockfd, (char *)buffer, BUFFER_SIZE, MSG_WAITALL, (struct sockaddr *)&servaddr, &len);
+        buffer[n] = '\0';
+        return string(buffer);
+    } 
+    else
+        return "TIMEOUT";
 }
 
 void Client::setupSocket() {
@@ -44,6 +64,6 @@ void Client::setupSocket() {
 void Client::sendGreeting() {
     string greeting = "GREETING " + clientIP;
     sendMessage(greeting);
-    string answer = recieveMessage();
+    string answer = recieveMessage(100);
     cout << "Server response: " << answer << endl;
 }

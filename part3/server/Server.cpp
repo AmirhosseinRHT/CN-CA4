@@ -38,7 +38,6 @@ void Server::bindSocket() {
     }
 }
 
-
 struct sockaddr_in Server::recieveMessage(string &msg)
 {
     char buffer[BUFFER_SIZE];
