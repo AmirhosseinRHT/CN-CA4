@@ -10,3 +10,6 @@
 *.Debug
 *.Release
 *.vscode
+
+cli
+ser
