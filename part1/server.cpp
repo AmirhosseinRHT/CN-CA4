@@ -3,6 +3,12 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include<stdlib.h>
+#include<cstring>
+#include <thread>
+#include <mutex>
+#include <queue>
+#include <condition_variable>
 #include "defs.hpp"
 #define BUFFER_SIZE 1024
 
@@ -34,6 +40,7 @@ public:
 
         while (true) {
             Packet packet;
+            printl("in while");
             int recv_len = recvfrom(sockfd,(void *) &packet, sizeof(Packet), 0, (struct sockaddr*)&client_addr, &client_len);
             if (recv_len < 0) {
                 std::cerr << "Failed to receive data" << std::endl;
@@ -63,6 +70,43 @@ public:
         int recv_len = recvfrom(sockfd,(void *) &ack_packet, sizeof(Packet), 0, (struct sockaddr*)client_addr, &client_len);
         if(ack_packet.ack & (!ack_packet.syn)){
             printl("ACK recived");
+        }
+        std::thread client(&Server::handle_client ,this ,std::ref(*client_addr), client_len);
+        std::thread v();
+        client.detach();
+        
+    }
+
+    void handle_client(struct sockaddr_in client_addr,socklen_t client_len){
+        
+        auto client_port = client_addr.sin_port;
+        while (true) {
+            Packet packet;
+            int recv_len = recvfrom(sockfd, (void*)&packet, sizeof(Packet), 0, (struct sockaddr*)&client_addr, &client_len);
+            if (recv_len < 0) {
+                // Handle error
+                break;
+            }
+            if(client_addr.sin_port != client_port)
+                continue;
+            
+            
+            std::cout << "Received message: " << packet.data[packet.data_size] << std::endl;
+            std::string ack = "ACK";
+            Packet ans;
+            // ans.ack =1;
+            // ans.psh = 1;
+            // ans.syn =0;
+            // ans.data_size =4;
+            // std::memcpy(ans.data ,ack.c_str() ,4);
+            // sendto(sockfd, &ans, sizeof(Packet), 0, (struct sockaddr*)&client_addr, client_len);
+            // std::cout << "Sent ACK to client" << std::endl;
+
+            // {
+            //     std::lock_guard<std::mutex> lock(message_queue_mutex);
+            //     message_queue.push(std::make_pair(packet, client_addr));
+            // }
+            // message_queue_cv.notify_one();
         }
     }
 

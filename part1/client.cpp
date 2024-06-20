@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include<cstring>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -22,21 +23,28 @@ public:
     }
 
     void sendMessage(const std::string& message) {
-        sendto(sockfd, message.c_str(), message.length(), 0, (struct sockaddr*)&server_addr, sizeof(server_addr));
+        Packet ans;
+        ans.ack =0;
+        ans.psh = 1;
+        ans.syn =0;
+        ans.data_size = message.size();
+        std::memcpy(ans.data ,message.c_str() ,message.size());
+        sendto(sockfd, message.c_str(), sizeof(Packet), 0, (struct sockaddr*)&server_addr, sizeof(server_addr));
         std::cout << "Sent message: " << message << std::endl;
 
         char buffer[BUFFER_SIZE];
         sockaddr_in recv_addr;
         socklen_t recv_len = sizeof(recv_addr);
 
-        int recv_bytes = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&recv_addr, &recv_len);
+        int recv_bytes = recvfrom(sockfd, &ans, sizeof(Packet), 0, (struct sockaddr*)&recv_addr, &recv_len);
         if (recv_bytes < 0) {
             std::cerr << "Failed to receive ACK" << std::endl;
             return;
         }
 
-        buffer[recv_bytes] = '\0';
-        std::cout << "Received ACK: " << buffer << std::endl;
+        //buffer[recv_bytes] = '\0';
+        if(ans.ack && ans.psh)
+        std::cout << "Received ACK: "<< std::endl;
     }
 
     void handshake(){
@@ -54,6 +62,7 @@ public:
             ack_seq = syn_ack_packet.syn_seq +1;
         }else{
             printl("connection failed!");
+            return;
         }
         Packet *ack_packet = make_ack_packet(seq ,ack_seq);
         sendto(sockfd, (void *) ack_packet, sizeof(Packet), 0, (struct sockaddr*)&server_addr, sizeof(server_addr));
