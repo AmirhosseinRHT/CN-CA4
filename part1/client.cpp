@@ -1,84 +1,46 @@
-// RawClient.cpp
 #include <iostream>
+#include <string>
 #include <cstring>
 #include <sys/socket.h>
+#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include <netinet/ip.h>
-
-#define PORT 8080
-#define BUFFER_SIZE 1024
-
-struct CustomPacket {
-    uint32_t seq_num;
-    uint32_t ack_num;
-    uint16_t flags;
-    char data[BUFFER_SIZE];
-};
-
-#define SYN_FLAG 0x1
-#define ACK_FLAG 0x2
-#define FIN_FLAG 0x4
 
 int main() {
-    int sock = 0;
-    struct sockaddr_in serv_addr;
-    CustomPacket packet;
-    
-    // Creating raw socket
-    if ((sock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) < 0) {
-        perror("Socket creation error");
-        return -1;
+    // Target IP and port
+    std::string target_ip = "127.0.0.1";
+    int target_port = 8000;  // Same port as the server
+
+    // Create a UDP socket
+    int client_socket = socket(AF_INET, SOCK_DGRAM, 0);
+    if (client_socket == -1) {
+        std::cerr << "Failed to create socket" << std::endl;
+        return 1;
     }
-    
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(PORT);
-    
-    if(inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
-        perror("Invalid address/ Address not supported");
-        return -1;
-    }
-    
-    // Send SYN
-    packet.seq_num = 1000;
-    packet.flags = SYN_FLAG;
-    sendto(sock, &packet, sizeof(packet), 0, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
-    std::cout << "Sent SYN" << std::endl;
-    
-    // Receive SYN-ACK
-    socklen_t addrlen = sizeof(serv_addr);
-    recvfrom(sock, &packet, sizeof(packet), 0, (struct sockaddr *)&serv_addr, &addrlen);
-    if (packet.flags & (SYN_FLAG | ACK_FLAG)) {
-        std::cout << "Received SYN-ACK" << std::endl;
-        
-        // Send ACK
-        packet.flags = ACK_FLAG;
-        packet.seq_num++;
-        sendto(sock, &packet, sizeof(packet), 0, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
-        std::cout << "Sent ACK, connection established" << std::endl;
-        
-        // Enter message exchange loop
-        while(true) {
-            std::string message;
-            std::cout << "Client: ";
-            std::getline(std::cin, message);
-            
-            if (message == "exit") {
-                packet.flags = FIN_FLAG;
-                sendto(sock, &packet, sizeof(packet), 0, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
-                std::cout << "Sent FIN, closing connection" << std::endl;
-                break;
-            }
-            
-            strncpy(packet.data, message.c_str(), BUFFER_SIZE);
-            packet.flags = 0;
-            sendto(sock, &packet, sizeof(packet), 0, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
-            
-            recvfrom(sock, &packet, sizeof(packet), 0, (struct sockaddr *)&serv_addr, &addrlen);
-            std::cout << "Server: " << packet.data << std::endl;
+
+    // Send data
+
+
+    sockaddr_in server_addr;
+    std::memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = inet_addr(target_ip.c_str());
+    server_addr.sin_port = htons(target_port);
+
+    while(true){    
+        std::string message;
+        std::cout << "Enter a message to send: ";
+        std::getline(std::cin, message);
+
+        ssize_t bytes_sent = sendto(client_socket, message.c_str(), message.length(), 0, (sockaddr*)&server_addr, sizeof(server_addr));
+        if (bytes_sent == -1) {
+            std::cerr << "Failed to send data" << std::endl;
+        } else {
+            std::cout << "Message sent successfully" << std::endl;
         }
     }
-    
-    close(sock);
+
+    // Close the socket
+    close(client_socket);
     return 0;
 }

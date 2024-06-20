@@ -1,81 +1,51 @@
-// RawServer.cpp
 #include <iostream>
+#include <string>
 #include <cstring>
 #include <sys/socket.h>
+#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include <netinet/ip.h>
-
-#define PORT 8080
-#define BUFFER_SIZE 1024
-
-struct CustomPacket {
-    uint32_t seq_num;
-    uint32_t ack_num;
-    uint16_t flags;
-    char data[BUFFER_SIZE];
-};
-
-#define SYN_FLAG 0x1
-#define ACK_FLAG 0x2
-#define FIN_FLAG 0x4
 
 int main() {
-    int server_fd;
-    struct sockaddr_in address;
-    CustomPacket packet;
-    
-    // Creating raw socket
-    if ((server_fd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) < 0) {
-        perror("socket failed");
-        exit(EXIT_FAILURE);
+    // Create a UDP socket
+    int server_socket = socket(AF_INET, SOCK_DGRAM, 0);
+    if (server_socket == -1) {
+        std::cerr << "Failed to create socket" << std::endl;
+        return 1;
     }
-    
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(PORT);
-    
-    std::cout << "Server listening on port " << PORT << std::endl;
-    
-    while(true) {
-        socklen_t addrlen = sizeof(address);
-        
-        // Receive SYN
-        recvfrom(server_fd, &packet, sizeof(packet), 0, (struct sockaddr *)&address, &addrlen);
-        if (packet.flags & SYN_FLAG) {
-            std::cout << "Received SYN" << std::endl;
-            
-            // Send SYN-ACK
-            packet.flags = SYN_FLAG | ACK_FLAG;
-            packet.ack_num = packet.seq_num + 1;
-            sendto(server_fd, &packet, sizeof(packet), 0, (struct sockaddr *)&address, addrlen);
-            std::cout << "Sent SYN-ACK" << std::endl;
-            
-            // Receive ACK
-            recvfrom(server_fd, &packet, sizeof(packet), 0, (struct sockaddr *)&address, &addrlen);
-            if (packet.flags & ACK_FLAG) {
-                std::cout << "Received ACK, connection established" << std::endl;
-                
-                // Enter message exchange loop
-                while(true) {
-                    recvfrom(server_fd, &packet, sizeof(packet), 0, (struct sockaddr *)&address, &addrlen);
-                    if (packet.flags & FIN_FLAG) {
-                        std::cout << "Received FIN, closing connection" << std::endl;
-                        break;
-                    }
-                    std::cout << "Client: " << packet.data << std::endl;
-                    
-                    std::string message;
-                    std::cout << "Server: ";
-                    std::getline(std::cin, message);
-                    strncpy(packet.data, message.c_str(), BUFFER_SIZE);
-                    packet.flags = ACK_FLAG;
-                    sendto(server_fd, &packet, sizeof(packet), 0, (struct sockaddr *)&address, addrlen);
-                }
-            }
+
+    // Bind the socket to all available interfaces
+    sockaddr_in server_addr;
+    std::memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+    server_addr.sin_port = htons(8000);  // Set the desired port number
+
+    if (bind(server_socket, (sockaddr*)&server_addr, sizeof(server_addr)) == -1) {
+        std::cerr << "Failed to bind socket" << std::endl;
+        close(server_socket);
+        return 1;
+    }
+
+    // Receive data
+    std::cout << "Server is listening for incoming messages..." << std::endl;
+    char buffer[1024];
+    sockaddr_in client_addr;
+    socklen_t client_addr_len = sizeof(client_addr);
+
+    while (true) {
+        ssize_t bytes_received = recvfrom(server_socket, buffer, sizeof(buffer), 0, (sockaddr*)&client_addr, &client_addr_len);
+        if (bytes_received == -1) {
+            std::cerr << "Failed to receive data" << std::endl;
+            break;
         }
+
+        std::string message(buffer, bytes_received);
+        std::string client_ip = inet_ntoa(client_addr.sin_addr);
+        std::cout << "Received message from " << client_ip << ": " << message << std::endl;
     }
-    
-    close(server_fd);
+
+    // Close the socket
+    close(server_socket);
     return 0;
 }
