@@ -1,46 +1,70 @@
 #include <iostream>
 #include <string>
-#include <cstring>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
-int main() {
-    // Target IP and port
-    std::string target_ip = "127.0.0.1";
-    int target_port = 8000;  // Same port as the server
+#define BUFFER_SIZE 1024
 
-    // Create a UDP socket
-    int client_socket = socket(AF_INET, SOCK_DGRAM, 0);
-    if (client_socket == -1) {
-        std::cerr << "Failed to create socket" << std::endl;
+class UDPClient {
+public:
+    UDPClient(const std::string& serverIP, int serverPort) {
+        sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+        if (sockfd < 0) {
+            std::cerr << "Failed to create socket" << std::endl;
+            return;
+        }
+
+        server_addr.sin_family = AF_INET;
+        server_addr.sin_addr.s_addr = inet_addr(serverIP.c_str());
+        server_addr.sin_port = htons(serverPort);
+    }
+
+    void sendMessage(const std::string& message) {
+        sendto(sockfd, message.c_str(), message.length(), 0, (struct sockaddr*)&server_addr, sizeof(server_addr));
+        std::cout << "Sent message: " << message << std::endl;
+
+        char buffer[BUFFER_SIZE];
+        sockaddr_in recv_addr;
+        socklen_t recv_len = sizeof(recv_addr);
+
+        int recv_bytes = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&recv_addr, &recv_len);
+        if (recv_bytes < 0) {
+            std::cerr << "Failed to receive ACK" << std::endl;
+            return;
+        }
+
+        buffer[recv_bytes] = '\0';
+        std::cout << "Received ACK: " << buffer << std::endl;
+    }
+
+private:
+    int sockfd;
+    sockaddr_in server_addr;
+};
+
+int main(int argc, char* argv[]) {
+    if (argc < 3) {
+        std::cerr << "Usage: " << argv[0] << " <server_ip> <server_port>" << std::endl;
         return 1;
     }
 
-    // Send data
+    std::string serverIP = argv[1];
+    int serverPort = std::stoi(argv[2]);
 
+    UDPClient client(serverIP, serverPort);
 
-    sockaddr_in server_addr;
-    std::memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = inet_addr(target_ip.c_str());
-    server_addr.sin_port = htons(target_port);
-
-    while(true){    
+    while (true) {
         std::string message;
-        std::cout << "Enter a message to send: ";
+        std::cout << "Enter a message to send (or 'q' to quit): ";
         std::getline(std::cin, message);
 
-        ssize_t bytes_sent = sendto(client_socket, message.c_str(), message.length(), 0, (sockaddr*)&server_addr, sizeof(server_addr));
-        if (bytes_sent == -1) {
-            std::cerr << "Failed to send data" << std::endl;
-        } else {
-            std::cout << "Message sent successfully" << std::endl;
+        if (message == "q") {
+            break;
         }
+
+        client.sendMessage(message);
     }
 
-    // Close the socket
-    close(client_socket);
     return 0;
 }
