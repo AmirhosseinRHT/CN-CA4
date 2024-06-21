@@ -17,11 +17,11 @@ void wait_time(int t){
 
 void Reno::run(Client &client){
     client.handshake();
-    int rec_ack[1000];
+    int rec_ack[500];
     int pn = 1 , ans_num=-1;
     
     int speed_rev = first_speed;
-    while (pn < 1000) {
+    while (pn < 500) {
 
         for(int s =0 ; s< 3; s++){
             std::string message = std::to_string(pn);
@@ -40,13 +40,17 @@ void Reno::run(Client &client){
             try{
                 ans_num = std::stoi(ans);
             }catch(...){
-                // send again a packet that droped
+                //send again a packet that droped
                 ans_num = -1;
                 int without_ack_num = std::stoi(ans.substr(1 , ans.size()-1));
                 std::string message = std::to_string(without_ack_num);
                 client.sendMessage(message , without_ack_num);
                 auto ans = client.recieveMessage(20000 * 20000);//long time wait
-                
+                pn = without_ack_num +1;
+                printl("Packet drop :" + std::to_string(speed_rev));
+                threshold = speed_rev * 2;
+                speed_rev = first_speed * 2;
+                break;
             }
             rec_ack[ans_num]++;
             printl("ACK:" + ans + " " +std::to_string(pn));

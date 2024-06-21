@@ -73,6 +73,7 @@ public:
     void handle_client(struct sockaddr_in client_addr,socklen_t client_len){
         
         auto client_port = client_addr.sin_port;
+        int num_complete = 0;
         while (true) {
             Packet packet;
             int recv_len = recvfrom(sockfd, (void*)&packet, sizeof(Packet), 0, (struct sockaddr*)&client_addr, &client_len);
@@ -84,7 +85,16 @@ public:
             if(packet.data_size >= BUFFER_SIZE)
                 continue;
             std::cout << "Received message: " << packet.data << std::endl;
-            std::string ack = std::to_string(packet.syn_seq);
+            std::string ack;
+            ack = std::to_string(packet.syn_seq);
+
+            if(packet.syn_seq == num_complete + 1){
+                num_complete++;
+                     ack = std::to_string(packet.syn_seq);
+            }
+            else{
+                ack ="N"+ std::to_string(num_complete+1);    
+            }
             Packet ans;
             ans.ack =1;
             ans.psh = 1;
