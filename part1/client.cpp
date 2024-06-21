@@ -6,12 +6,13 @@
 #include <unistd.h>
 #include"defs.hpp"
 
-#define BUFFER_SIZE 1024
+
+
 
 class Client {
 public:
     Client(const std::string& serverIP, int serverPort) {
-        sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+        sockfd = socket(AF_INET, SOCk_RAW, 0);
         if (sockfd < 0) {
             std::cerr << "Failed to create socket" << std::endl;
             return;
@@ -29,7 +30,7 @@ public:
         ans.syn =0;
         ans.data_size = message.size();
         std::memcpy(ans.data ,message.c_str() ,message.size());
-        sendto(sockfd, message.c_str(), sizeof(Packet), 0, (struct sockaddr*)&server_addr, sizeof(server_addr));
+        sendto(sockfd, &ans, sizeof(Packet), 0, (struct sockaddr*)&server_addr, sizeof(server_addr));
         std::cout << "Sent message: " << message << std::endl;
 
         char buffer[BUFFER_SIZE];
@@ -41,8 +42,6 @@ public:
             std::cerr << "Failed to receive ACK" << std::endl;
             return;
         }
-
-        //buffer[recv_bytes] = '\0';
         if(ans.ack && ans.psh)
         std::cout << "Received ACK: "<< std::endl;
     }

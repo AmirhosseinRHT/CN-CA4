@@ -15,7 +15,7 @@
 class Server {
 public:
     Server(int port) {
-        sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+        sockfd = socket(AF_INET, SOCk_RAW, 0);
         if (sockfd < 0) {
             std::cerr << "Failed to create socket" << std::endl;
             return;
@@ -40,7 +40,7 @@ public:
 
         while (true) {
             Packet packet;
-            printl("in while");
+            
             int recv_len = recvfrom(sockfd,(void *) &packet, sizeof(Packet), 0, (struct sockaddr*)&client_addr, &client_len);
             if (recv_len < 0) {
                 std::cerr << "Failed to receive data" << std::endl;
@@ -49,15 +49,16 @@ public:
             if( (packet.syn & (!packet.ack))){
                 printl("SYN recived");
                 handle_handshake(&packet ,&client_addr ,client_len);
+                
             }else{
             
-                // buffer = (char *) &packet;
-                // buffer[recv_len] = '\0';
-                // std::cout << "Received message: " << buffer << std::endl;
+                buffer = (char *) &packet;
+                buffer[recv_len] = '\0';
+                std::cout << "Received message: " << buffer << std::endl;
 
-                // std::string ack = "ACK";
-                // sendto(sockfd, ack.c_str(), ack.length(), 0, (struct sockaddr*)&client_addr, client_len);
-                // std::cout << "Sent ACK to client" << std::endl;
+                std::string ack = "ACK";
+                sendto(sockfd, ack.c_str(), ack.length(), 0, (struct sockaddr*)&client_addr, client_len);
+                std::cout << "Sent ACK to client" << std::endl;
             }
         }
     }
@@ -73,8 +74,8 @@ public:
         }
         std::thread client(&Server::handle_client ,this ,std::ref(*client_addr), client_len);
         
-        // client.detach();
         client.join();
+        
         
     }
 
@@ -83,7 +84,6 @@ public:
         auto client_port = client_addr.sin_port;
         while (true) {
             Packet packet;
-            printl("hasan");
             int recv_len = recvfrom(sockfd, (void*)&packet, sizeof(Packet), 0, (struct sockaddr*)&client_addr, &client_len);
             if (recv_len < 0) {
                 // Handle error
@@ -93,7 +93,7 @@ public:
                 continue;
             
             
-            std::cout << "Received message: " << packet.data[packet.data_size] << std::endl;
+            std::cout << "Received message: " << packet.data<< std::endl;
             std::string ack = "ACK";
             Packet ans;
             ans.ack =1;
@@ -104,11 +104,7 @@ public:
             sendto(sockfd, &ans, sizeof(Packet), 0, (struct sockaddr*)&client_addr, client_len);
             std::cout << "Sent ACK to client" << std::endl;
 
-            // {
-            //     std::lock_guard<std::mutex> lock(message_queue_mutex);
-            //     message_queue.push(std::make_pair(packet, client_addr));
-            // }
-            // message_queue_cv.notify_one();
+            
         }
     }
 

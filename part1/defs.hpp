@@ -1,11 +1,15 @@
 #ifndef DEFS_HPP
 #define DEFS_HPP
 
+#include <sys/socket.h>
 #include<string>
 #include<iostream>
 
 #define MESSAGE_SIZE 1024
-
+#define BUFFER_SIZE 1024
+#define SOCk_RAW 2
+typedef unsigned int uint;
+typedef long long ll;
 
 struct Packet{
     unsigned int syn_seq;
