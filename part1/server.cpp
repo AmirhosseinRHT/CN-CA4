@@ -73,10 +73,7 @@ public:
             printl("ACK recived");
         }
         std::thread client(&Server::handle_client ,this ,std::ref(*client_addr), client_len);
-        
         client.join();
-        
-        
     }
 
     void handle_client(struct sockaddr_in client_addr,socklen_t client_len){
@@ -90,9 +87,7 @@ public:
                 break;
             }
             if(client_addr.sin_port != client_port)
-                continue;
-            
-            
+                continue;           
             std::cout << "Received message: " << packet.data<< std::endl;
             std::string ack = "ACK";
             Packet ans;
@@ -102,13 +97,9 @@ public:
             ans.data_size =4;
             std::memcpy(ans.data ,ack.c_str() ,4);
             sendto(sockfd, &ans, sizeof(Packet), 0, (struct sockaddr*)&client_addr, client_len);
-            std::cout << "Sent ACK to client" << std::endl;
-
-            
+            std::cout << "Sent ACK to client" << std::endl;           
         }
     }
-
-    
 
 private:
     int sockfd;
