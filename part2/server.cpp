@@ -74,6 +74,8 @@ public:
         
         auto client_port = client_addr.sin_port;
         int num_complete = 0;
+        int *recieve_list= new int[500];
+        std::memset(recieve_list , 0,500 * sizeof(int));
         while (true) {
             Packet packet;
             int recv_len = recvfrom(sockfd, (void*)&packet, sizeof(Packet), 0, (struct sockaddr*)&client_addr, &client_len);
@@ -88,18 +90,25 @@ public:
             std::string ack;
             ack = std::to_string(packet.syn_seq);
 
+            Packet ans;
+            ans.ack_seq = packet.syn_seq;
             if(packet.syn_seq == num_complete + 1){
                 num_complete++;
-                     ack = std::to_string(packet.syn_seq);
+                recieve_list[num_complete] =1;
+                ack = std::to_string(packet.syn_seq);
             }
-            else{
-                ack ="N"+ std::to_string(num_complete+1);    
+            else{ //handle packets droped
+                recieve_list[packet.syn_seq] =1;
+                for(int s= num_complete+1 ; s < packet.syn_seq; s++){
+                    if(!recieve_list[s]){
+                        ans.ack_seq = s;
+                        ack ="N"+ std::to_string(s);    
+                    }
+                }
             }
-            Packet ans;
             ans.ack =1;
             ans.psh = 1;
             ans.syn =0;
-            ans.ack_seq = packet.syn_seq;
             ans.data_size =ack.size();
             std::memcpy(ans.data ,ack.c_str() ,ack.size());
             sendto(sockfd, &ans, sizeof(Packet), 0, (struct sockaddr*)&client_addr, client_len);
