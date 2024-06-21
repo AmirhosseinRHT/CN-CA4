@@ -36,8 +36,9 @@ void Reno::run(Client &client){
             }
 
             if(ans == "TIMEOUT"){
-                    speed_rev = first_speed * 2;
+                    printl("speed drop :" + std::to_string(speed_rev));
                     threshold = speed_rev * 2;
+                    speed_rev = first_speed * 2;
                     break;
             }else{
                 rec_ack[ans_num]++;
@@ -47,6 +48,9 @@ void Reno::run(Client &client){
                     break;
             }
         }
-        speed_rev /=2;
+        if(speed_rev <= threshold){
+                speed_rev -=512;
+        }else
+            speed_rev /=2;
     }
 }
