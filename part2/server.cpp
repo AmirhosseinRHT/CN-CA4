@@ -6,6 +6,7 @@
 #include<stdlib.h>
 #include<cstring>
 #include <thread>
+#include<chrono>
 #include <mutex>
 #include <queue>
 #include <condition_variable>
@@ -40,7 +41,6 @@ public:
 
         while (true) {
             Packet packet;
-            printl("in while");
             int recv_len = recvfrom(sockfd,(void *) &packet, sizeof(Packet), 0, (struct sockaddr*)&client_addr, &client_len);
             if (recv_len < 0) {
                 std::cerr << "Failed to receive data" << std::endl;
@@ -49,18 +49,7 @@ public:
             if( (packet.syn & (!packet.ack))){
                 printl("SYN recived");
                 handle_handshake(&packet ,&client_addr ,client_len);
-                while (1);
-                
-                
-            }else{
-            
-                // buffer = (char *) &packet;
-                // buffer[recv_len] = '\0';
-                // std::cout << "Received message: " << buffer << std::endl;
-
-                // std::string ack = "ACK";
-                // sendto(sockfd, ack.c_str(), ack.length(), 0, (struct sockaddr*)&client_addr, client_len);
-                // std::cout << "Sent ACK to client" << std::endl;
+                   
             }
         }
     }
@@ -74,10 +63,10 @@ public:
         if(ack_packet.ack & (!ack_packet.syn)){
             printl("ACK recived");
         }
+
+        // new thread
         std::thread client(&Server::handle_client ,this ,std::ref(*client_addr), client_len);
-        
-        client.detach();
-        // client.join();
+        client.join();
         
     }
 
@@ -87,7 +76,6 @@ public:
         while (true) {
             Packet packet;
             int recv_len = recvfrom(sockfd, (void*)&packet, sizeof(Packet), 0, (struct sockaddr*)&client_addr, &client_len);
-            printl("hasan");
             if (recv_len < 0) {
                 // Handle error
                 continue;
@@ -106,6 +94,7 @@ public:
             std::memcpy(ans.data ,ack.c_str() ,ack.size());
             sendto(sockfd, &ans, sizeof(Packet), 0, (struct sockaddr*)&client_addr, client_len);
             std::cout << "Sent ACK to client " << packet.syn_seq << std::endl;
+            std::this_thread::sleep_for(std::chrono::microseconds(1000));
         }
     }
 
